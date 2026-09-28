@@ -1,0 +1,1513 @@
+import ast
+import math
+import operator
+import re
+import streamlit as st
+
+
+# ============================================================
+# PAGE CONFIG
+# ============================================================
+
+st.set_page_config(
+    page_title="NOVA CALC",
+    page_icon="🧮",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+
+# ============================================================
+# THEME / CSS
+# ============================================================
+
+st.markdown(
+    """
+    <style>
+
+    /* --------------------------------------------------------
+       GLOBAL
+    -------------------------------------------------------- */
+
+    .stApp {
+        background:
+            radial-gradient(
+                circle at top right,
+                rgba(22, 199, 245, 0.08),
+                transparent 35%
+            ),
+            radial-gradient(
+                circle at bottom left,
+                rgba(139, 108, 255, 0.08),
+                transparent 35%
+            ),
+            #080C12;
+        color: #F5F8FB;
+    }
+
+    /* Main container */
+    .block-container {
+        max-width: 1400px;
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+    }
+
+    /* --------------------------------------------------------
+       HEADER
+    -------------------------------------------------------- */
+
+    .nova-header {
+        background: linear-gradient(
+            135deg,
+            #0E141C,
+            #121B25
+        );
+
+        border: 1px solid #243342;
+        border-radius: 20px;
+
+        padding: 18px 25px;
+        margin-bottom: 18px;
+
+        box-shadow:
+            0 10px 35px rgba(0,0,0,0.25);
+    }
+
+    .logo {
+        font-size: 30px;
+        font-weight: 800;
+        letter-spacing: 2px;
+    }
+
+    .logo-nova {
+        color: #16C7F5;
+    }
+
+    .logo-calc {
+        color: #F5F8FB;
+    }
+
+    .subtitle {
+        color: #7E8D9D;
+        font-size: 11px;
+        letter-spacing: 2px;
+        margin-top: 2px;
+    }
+
+    /* --------------------------------------------------------
+       DISPLAY
+    -------------------------------------------------------- */
+
+    .calculator-display {
+        background:
+            linear-gradient(
+                145deg,
+                #0B1118,
+                #0E151E
+            );
+
+        border: 1px solid #243342;
+        border-radius: 24px;
+
+        min-height: 210px;
+
+        padding: 24px 28px;
+
+        margin-bottom: 15px;
+
+        box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.02),
+            0 15px 40px rgba(0,0,0,0.25);
+
+        text-align: right;
+    }
+
+    .display-meta {
+        color: #36D68A;
+        font-size: 12px;
+        font-weight: 700;
+        text-align: left;
+    }
+
+    .display-expression {
+        color: #7E8D9D;
+        font-size: 20px;
+        min-height: 32px;
+        margin-top: 40px;
+    }
+
+    .display-result {
+        color: #F5F8FB;
+        font-size: 52px;
+        font-weight: 800;
+        line-height: 1.1;
+        overflow-wrap: anywhere;
+    }
+
+    .display-error {
+        color: #FF5B6E;
+        font-size: 46px;
+        font-weight: 800;
+    }
+
+    /* --------------------------------------------------------
+       CARDS
+    -------------------------------------------------------- */
+
+    .nova-card {
+        background: #0E141C;
+        border: 1px solid #243342;
+        border-radius: 20px;
+        padding: 18px;
+        margin-bottom: 15px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        color: #F5F8FB;
+        margin-bottom: 12px;
+    }
+
+    /* --------------------------------------------------------
+       BUTTONS
+    -------------------------------------------------------- */
+
+    div.stButton > button {
+        width: 100%;
+        min-height: 52px;
+
+        border-radius: 14px;
+
+        border: 1px solid #243342;
+
+        background: #151F2A;
+        color: #F5F8FB;
+
+        font-size: 15px;
+        font-weight: 700;
+
+        transition:
+            transform 0.12s ease,
+            background 0.12s ease,
+            border-color 0.12s ease;
+    }
+
+    div.stButton > button:hover {
+        background: #1C2936;
+        border-color: #16C7F5;
+        transform: translateY(-1px);
+    }
+
+    /* --------------------------------------------------------
+       INPUT
+    -------------------------------------------------------- */
+
+    div[data-baseweb="input"] {
+        background: #0B1118;
+        border-color: #243342;
+        border-radius: 12px;
+    }
+
+    /* --------------------------------------------------------
+       SIDEBAR
+    -------------------------------------------------------- */
+
+    section[data-testid="stSidebar"] {
+        background:
+            linear-gradient(
+                180deg,
+                #0E141C,
+                #080C12
+            );
+
+        border-right: 1px solid #243342;
+    }
+
+    /* --------------------------------------------------------
+       HISTORY
+    -------------------------------------------------------- */
+
+    .history-card {
+        background: #151F2A;
+
+        border: 1px solid #243342;
+        border-radius: 14px;
+
+        padding: 13px;
+        margin-bottom: 9px;
+
+        transition: 0.15s ease;
+    }
+
+    .history-card:hover {
+        border-color: #16C7F5;
+        background: #1C2936;
+    }
+
+    .history-expression {
+        color: #7E8D9D;
+        font-size: 12px;
+    }
+
+    .history-result {
+        color: #F5F8FB;
+        font-size: 17px;
+        font-weight: 800;
+    }
+
+    /* --------------------------------------------------------
+       STATUS
+    -------------------------------------------------------- */
+
+    .statusbar {
+        display: flex;
+        justify-content: space-between;
+
+        background: #0E141C;
+
+        border: 1px solid #243342;
+        border-radius: 14px;
+
+        padding: 10px 16px;
+
+        color: #7E8D9D;
+        font-size: 11px;
+
+        margin-top: 12px;
+    }
+
+    .ready {
+        color: #36D68A;
+        font-weight: 800;
+    }
+
+    /* --------------------------------------------------------
+       HIDE STREAMLIT DEFAULT
+    -------------------------------------------------------- */
+
+    #MainMenu {
+        visibility: hidden;
+    }
+
+    footer {
+        visibility: hidden;
+    }
+
+    header {
+        visibility: hidden;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# ============================================================
+# SAFE CALCULATOR
+# ============================================================
+
+def factorial(value):
+    if not math.isfinite(value):
+        raise ValueError("Ungültige Zahl")
+
+    if value < 0 or value != int(value):
+        raise ValueError(
+            "Fakultät benötigt eine positive Ganzzahl"
+        )
+
+    if value > 170:
+        raise OverflowError(
+            "Zahl ist für Fakultät zu groß"
+        )
+
+    return float(math.factorial(int(value)))
+
+
+class SafeEvaluator:
+
+    binary_operators = {
+        ast.Add: operator.add,
+        ast.Sub: operator.sub,
+        ast.Mult: operator.mul,
+        ast.Div: operator.truediv,
+        ast.Pow: operator.pow,
+        ast.Mod: operator.mod,
+        ast.FloorDiv: operator.floordiv,
+    }
+
+    unary_operators = {
+        ast.UAdd: operator.pos,
+        ast.USub: operator.neg,
+    }
+
+    def __init__(self, angle_mode="DEG"):
+        self.angle_mode = angle_mode
+
+    def sin(self, x):
+        return (
+            math.sin(math.radians(x))
+            if self.angle_mode == "DEG"
+            else math.sin(x)
+        )
+
+    def cos(self, x):
+        return (
+            math.cos(math.radians(x))
+            if self.angle_mode == "DEG"
+            else math.cos(x)
+        )
+
+    def tan(self, x):
+        return (
+            math.tan(math.radians(x))
+            if self.angle_mode == "DEG"
+            else math.tan(x)
+        )
+
+    def asin(self, x):
+        value = math.asin(x)
+
+        return (
+            math.degrees(value)
+            if self.angle_mode == "DEG"
+            else value
+        )
+
+    def acos(self, x):
+        value = math.acos(x)
+
+        return (
+            math.degrees(value)
+            if self.angle_mode == "DEG"
+            else value
+        )
+
+    def atan(self, x):
+        value = math.atan(x)
+
+        return (
+            math.degrees(value)
+            if self.angle_mode == "DEG"
+            else value
+        )
+
+    def functions(self):
+
+        return {
+            "sin": self.sin,
+            "cos": self.cos,
+            "tan": self.tan,
+            "asin": self.asin,
+            "acos": self.acos,
+            "atan": self.atan,
+            "sqrt": math.sqrt,
+            "log": math.log10,
+            "ln": math.log,
+            "exp": math.exp,
+            "abs": abs,
+            "factorial": factorial,
+        }
+
+    def constants(self):
+
+        return {
+            "pi": math.pi,
+            "e": math.e,
+        }
+
+    @staticmethod
+    def normalize(expression):
+
+        expression = expression.strip()
+
+        replacements = {
+            "×": "*",
+            "÷": "/",
+            "−": "-",
+            "π": "pi",
+            "√": "sqrt",
+            "^": "**",
+            "²": "**2",
+            "³": "**3",
+        }
+
+        for old, new in replacements.items():
+            expression = expression.replace(
+                old,
+                new,
+            )
+
+        expression = re.sub(
+            r"(?<=\d),(?=\d)",
+            ".",
+            expression,
+        )
+
+        expression = re.sub(
+            r"(\d+(?:\.\d+)?)%",
+            r"(\1/100)",
+            expression,
+        )
+
+        expression = re.sub(
+            r"(\([^()]+\)|\d+(?:\.\d+)?)!",
+            r"factorial(\1)",
+            expression,
+        )
+
+        expression = re.sub(
+            r"(\d|\))(?=(pi|e|sqrt|sin|cos|tan|asin|acos|atan|log|ln|abs|factorial)\b)",
+            r"\1*",
+            expression,
+        )
+
+        expression = re.sub(
+            r"(\d|\))(?=\()",
+            r"\1*",
+            expression,
+        )
+
+        return expression
+
+    def evaluate(self, expression):
+
+        expression = self.normalize(
+            expression
+        )
+
+        if not expression:
+            raise ValueError(
+                "Kein Ausdruck eingegeben"
+            )
+
+        if len(expression) > 600:
+            raise ValueError(
+                "Ausdruck ist zu lang"
+            )
+
+        try:
+            tree = ast.parse(
+                expression,
+                mode="eval",
+            )
+        except SyntaxError:
+            raise ValueError(
+                "Ungültiger Ausdruck"
+            )
+
+        result = self.visit(
+            tree.body
+        )
+
+        if not math.isfinite(result):
+            raise OverflowError(
+                "Ergebnis ist zu groß"
+            )
+
+        return float(result)
+
+    def visit(self, node):
+
+        if isinstance(
+            node,
+            ast.Constant,
+        ):
+
+            if isinstance(
+                node.value,
+                bool,
+            ):
+                raise ValueError(
+                    "Ungültiger Wert"
+                )
+
+            if isinstance(
+                node.value,
+                (int, float),
+            ):
+                return float(
+                    node.value
+                )
+
+            raise ValueError(
+                "Ungültiger Wert"
+            )
+
+        if isinstance(
+            node,
+            ast.BinOp,
+        ):
+
+            operation = self.binary_operators.get(
+                type(node.op)
+            )
+
+            if operation is None:
+                raise ValueError(
+                    "Operator nicht erlaubt"
+                )
+
+            left = self.visit(
+                node.left
+            )
+
+            right = self.visit(
+                node.right
+            )
+
+            try:
+                return float(
+                    operation(
+                        left,
+                        right,
+                    )
+                )
+
+            except ZeroDivisionError:
+                raise ZeroDivisionError(
+                    "Division durch 0"
+                )
+
+            except OverflowError:
+                raise OverflowError(
+                    "Ergebnis ist zu groß"
+                )
+
+            except ValueError:
+                raise ValueError(
+                    "Ungültige Operation"
+                )
+
+        if isinstance(
+            node,
+            ast.UnaryOp,
+        ):
+
+            operation = self.unary_operators.get(
+                type(node.op)
+            )
+
+            if operation is None:
+                raise ValueError(
+                    "Operator nicht erlaubt"
+                )
+
+            return float(
+                operation(
+                    self.visit(
+                        node.operand
+                    )
+                )
+            )
+
+        if isinstance(
+            node,
+            ast.Name,
+        ):
+
+            constants = self.constants()
+
+            if node.id in constants:
+                return constants[
+                    node.id
+                ]
+
+            raise ValueError(
+                "Unbekannte Variable"
+            )
+
+        if isinstance(
+            node,
+            ast.Call,
+        ):
+
+            if not isinstance(
+                node.func,
+                ast.Name,
+            ):
+                raise ValueError(
+                    "Funktion nicht erlaubt"
+                )
+
+            function = self.functions().get(
+                node.func.id
+            )
+
+            if function is None:
+                raise ValueError(
+                    "Funktion nicht erlaubt"
+                )
+
+            if len(node.args) != 1:
+                raise ValueError(
+                    "Funktion benötigt ein Argument"
+                )
+
+            if node.keywords:
+                raise ValueError(
+                    "Argumente nicht erlaubt"
+                )
+
+            value = self.visit(
+                node.args[0]
+            )
+
+            try:
+                return float(
+                    function(value)
+                )
+
+            except ValueError as exc:
+                raise ValueError(
+                    str(exc)
+                )
+
+            except ZeroDivisionError:
+                raise ZeroDivisionError(
+                    "Ungültige Division"
+                )
+
+            except OverflowError:
+                raise OverflowError(
+                    "Ergebnis ist zu groß"
+                )
+
+        raise ValueError(
+            "Ausdruck enthält nicht erlaubte Elemente"
+        )
+
+
+# ============================================================
+# FORMATTING
+# ============================================================
+
+def format_number(value):
+
+    if not math.isfinite(value):
+        return "∞"
+
+    if abs(value) < 1e-12:
+        value = 0
+
+    if abs(value) >= 1e12 or (
+        abs(value) < 1e-9
+        and value != 0
+    ):
+        return f"{value:.8e}"
+
+    if float(value).is_integer():
+        return f"{int(value):,}".replace(
+            ",",
+            ".",
+        )
+
+    text = (
+        f"{value:.12f}"
+        .rstrip("0")
+        .rstrip(".")
+    )
+
+    if "." in text:
+
+        integer, decimal = text.split(".")
+
+        sign = ""
+
+        if integer.startswith("-"):
+            sign = "-"
+            integer = integer[1:]
+
+        integer = f"{int(integer):,}".replace(
+            ",",
+            ".",
+        )
+
+        return (
+            f"{sign}{integer},{decimal}"
+        )
+
+    return text
+
+
+# ============================================================
+# SESSION STATE
+# ============================================================
+
+defaults = {
+    "expression": "",
+    "result": "",
+    "error": "",
+    "history": [],
+    "memory": 0.0,
+    "angle_mode": "DEG",
+    "scientific": True,
+    "status": "Keyboard Ready",
+}
+
+
+for key, value in defaults.items():
+
+    if key not in st.session_state:
+        st.session_state[key] = value
+
+
+# ============================================================
+# ENGINE
+# ============================================================
+
+evaluator = SafeEvaluator(
+    st.session_state.angle_mode
+)
+
+
+# ============================================================
+# CALLBACKS
+# ============================================================
+
+def add_text(value):
+
+    if st.session_state.error:
+        st.session_state.expression = ""
+        st.session_state.error = ""
+
+    st.session_state.expression += value
+
+
+def clear_all():
+
+    st.session_state.expression = ""
+    st.session_state.result = ""
+    st.session_state.error = ""
+    st.session_state.status = "Bereit"
+
+
+def clear_entry():
+
+    st.session_state.expression = ""
+    st.session_state.error = ""
+
+
+def backspace():
+
+    if st.session_state.error:
+        clear_all()
+        return
+
+    st.session_state.expression = (
+        st.session_state.expression[:-1]
+    )
+
+
+def calculate():
+
+    expression = (
+        st.session_state.expression
+    )
+
+    if not expression:
+        return
+
+    evaluator.angle_mode = (
+        st.session_state.angle_mode
+    )
+
+    try:
+
+        value = evaluator.evaluate(
+            expression
+        )
+
+        result = format_number(
+            value
+        )
+
+        st.session_state.result = result
+        st.session_state.error = ""
+
+        st.session_state.history.insert(
+            0,
+            {
+                "expression": expression,
+                "result": result,
+            },
+        )
+
+        st.session_state.status = (
+            "Berechnung erfolgreich"
+        )
+
+        st.session_state.expression = str(
+            value
+        )
+
+    except Exception as exc:
+
+        st.session_state.error = str(
+            exc
+        )
+
+        st.session_state.result = ""
+        st.session_state.status = (
+            f"Fehler: {exc}"
+        )
+
+
+def toggle_sign():
+
+    expression = (
+        st.session_state.expression
+    )
+
+    if not expression:
+        st.session_state.expression = "-"
+        return
+
+    if (
+        expression.startswith("-(")
+        and expression.endswith(")")
+    ):
+
+        st.session_state.expression = (
+            expression[2:-1]
+        )
+
+    else:
+
+        st.session_state.expression = (
+            f"-({expression})"
+        )
+
+
+def toggle_angle():
+
+    st.session_state.angle_mode = (
+        "RAD"
+        if st.session_state.angle_mode
+        == "DEG"
+        else "DEG"
+    )
+
+    evaluator.angle_mode = (
+        st.session_state.angle_mode
+    )
+
+
+def memory_add():
+
+    try:
+
+        value = get_current_value()
+
+        st.session_state.memory += value
+
+        st.session_state.status = (
+            "M+ gespeichert"
+        )
+
+    except Exception:
+
+        st.session_state.error = (
+            "Kein gültiger Wert"
+        )
+
+
+def memory_subtract():
+
+    try:
+
+        value = get_current_value()
+
+        st.session_state.memory -= value
+
+        st.session_state.status = (
+            "M− gespeichert"
+        )
+
+    except Exception:
+
+        st.session_state.error = (
+            "Kein gültiger Wert"
+        )
+
+
+def memory_recall():
+
+    st.session_state.expression += str(
+        st.session_state.memory
+    )
+
+
+def memory_clear():
+
+    st.session_state.memory = 0.0
+
+    st.session_state.status = (
+        "Speicher gelöscht"
+    )
+
+
+def get_current_value():
+
+    if st.session_state.expression:
+
+        evaluator.angle_mode = (
+            st.session_state.angle_mode
+        )
+
+        return evaluator.evaluate(
+            st.session_state.expression
+        )
+
+    if st.session_state.result:
+
+        clean = (
+            st.session_state.result
+            .replace(".", "")
+            .replace(",", ".")
+        )
+
+        return float(clean)
+
+    return 0.0
+
+
+def copy_result():
+
+    # Streamlit bietet aus Sicherheitsgründen
+    # keine direkte Python-Clipboard-API.
+    # Der Wert wird daher über ein Textfeld
+    # kopierbar gemacht.
+    st.session_state.status = (
+        "Ergebnis im Kopierfeld verfügbar"
+    )
+
+
+def clear_history():
+
+    st.session_state.history = []
+
+    st.session_state.status = (
+        "Verlauf gelöscht"
+    )
+
+
+# ============================================================
+# HEADER
+# ============================================================
+
+st.markdown(
+    """
+    <div class="nova-header">
+
+        <div class="logo">
+            <span class="logo-nova">NOVA</span>
+            <span class="logo-calc"> CALC</span>
+        </div>
+
+        <div class="subtitle">
+            MODERN SCIENTIFIC CALCULATOR
+        </div>
+
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# ============================================================
+# SIDEBAR
+# ============================================================
+
+with st.sidebar:
+
+    st.markdown(
+        "### ⚙️ Einstellungen"
+    )
+
+    st.session_state.scientific = st.toggle(
+        "🔬 Scientific Mode",
+        value=st.session_state.scientific,
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        if st.button(
+            st.session_state.angle_mode,
+            use_container_width=True,
+        ):
+            toggle_angle()
+            st.rerun()
+
+    with col2:
+
+        st.metric(
+            "Memory",
+            format_number(
+                st.session_state.memory
+            ),
+        )
+
+    st.divider()
+
+    st.markdown(
+        "### 💾 Speicher"
+    )
+
+    mem1, mem2 = st.columns(2)
+
+    with mem1:
+
+        if st.button(
+            "M+",
+            use_container_width=True,
+        ):
+            memory_add()
+            st.rerun()
+
+    with mem2:
+
+        if st.button(
+            "M−",
+            use_container_width=True,
+        ):
+            memory_subtract()
+            st.rerun()
+
+    mem3, mem4 = st.columns(2)
+
+    with mem3:
+
+        if st.button(
+            "MR",
+            use_container_width=True,
+        ):
+            memory_recall()
+            st.rerun()
+
+    with mem4:
+
+        if st.button(
+            "MC",
+            use_container_width=True,
+        ):
+            memory_clear()
+            st.rerun()
+
+    st.divider()
+
+    st.markdown(
+        "### ⌨️ Tastatur"
+    )
+
+    st.caption(
+        """
+        **Enter** → Berechnen  
+        **Backspace** → Löschen  
+        **ESC** → Alles löschen  
+        **0–9** → Zahlen  
+        **+ − × ÷** → Operatoren
+        """
+    )
+
+    st.divider()
+
+    st.markdown(
+        "### 📋 Ergebnis"
+    )
+
+    copy_value = (
+        st.session_state.result
+        or "Noch kein Ergebnis"
+    )
+
+    st.text_input(
+        "Kopieren",
+        value=copy_value,
+        label_visibility="collapsed",
+    )
+
+
+# ============================================================
+# MAIN LAYOUT
+# ============================================================
+
+left, right = st.columns(
+    [2.3, 1],
+    gap="large",
+)
+
+
+# ============================================================
+# CALCULATOR
+# ============================================================
+
+with left:
+
+    # Display
+    if st.session_state.error:
+
+        st.markdown(
+            f"""
+            <div class="calculator-display">
+
+                <div class="display-meta">
+                    ⚠ ERROR
+                </div>
+
+                <div class="display-expression">
+                    {st.session_state.expression}
+                </div>
+
+                <div class="display-error">
+                    {st.session_state.error}
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    else:
+
+        expression = (
+            st.session_state.expression
+        )
+
+        result = (
+            st.session_state.result
+            or "0"
+        )
+
+        st.markdown(
+            f"""
+            <div class="calculator-display">
+
+                <div class="display-meta">
+                    M: {format_number(
+                        st.session_state.memory
+                    )}
+                    &nbsp;&nbsp;|
+                    &nbsp;&nbsp;
+                    {st.session_state.angle_mode}
+                </div>
+
+                <div class="display-expression">
+                    {expression}
+                </div>
+
+                <div class="display-result">
+                    {result}
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # --------------------------------------------------------
+    # SCIENTIFIC
+    # --------------------------------------------------------
+
+    if st.session_state.scientific:
+
+        st.markdown(
+            '<div class="nova-card">'
+            '<div class="section-title">'
+            'SCIENTIFIC'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+        scientific_rows = [
+            [
+                ("sin", "sin("),
+                ("cos", "cos("),
+                ("tan", "tan("),
+                ("asin", "asin("),
+                ("acos", "acos("),
+                ("atan", "atan("),
+            ],
+            [
+                ("√", "sqrt("),
+                ("x²", "²"),
+                ("xʸ", "^"),
+                ("log", "log("),
+                ("ln", "ln("),
+                ("EXP", "exp("),
+            ],
+            [
+                ("π", "π"),
+                ("e", "e"),
+                ("|x|", "abs("),
+                ("n!", "!"),
+                ("(", "("),
+                (")", ")"),
+            ],
+        ]
+
+        for row in scientific_rows:
+
+            cols = st.columns(6)
+
+            for col, (
+                label,
+                value,
+            ) in zip(cols, row):
+
+                with col:
+
+                    if st.button(
+                        label,
+                        key=f"scientific_{label}_{value}",
+                        use_container_width=True,
+                    ):
+                        add_text(value)
+                        st.rerun()
+
+        st.markdown(
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+    # --------------------------------------------------------
+    # BASIC BUTTONS
+    # --------------------------------------------------------
+
+    st.markdown(
+        '<div class="nova-card">'
+        '<div class="section-title">'
+        'CALCULATOR'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    rows = [
+        [
+            ("AC", "clear"),
+            ("CE", "clear_entry"),
+            ("⌫", "back"),
+            ("MC", "mc"),
+            ("MR", "mr"),
+        ],
+        [
+            ("7", "7"),
+            ("8", "8"),
+            ("9", "9"),
+            ("%", "%"),
+            ("÷", "÷"),
+        ],
+        [
+            ("4", "4"),
+            ("5", "5"),
+            ("6", "6"),
+            ("±", "sign"),
+            ("×", "×"),
+        ],
+        [
+            ("1", "1"),
+            ("2", "2"),
+            ("3", "3"),
+            ("(", "("),
+            ("−", "−"),
+        ],
+        [
+            ("0", "0"),
+            (",", ","),
+            (".", "."),
+            (")", ")"),
+            ("+", "+"),
+        ],
+        [
+            ("M+", "mplus"),
+            ("M−", "mminus"),
+            ("COPY", "copy"),
+            ("HISTORY", "history"),
+            ("=", "equals"),
+        ],
+    ]
+
+    for row_index, row in enumerate(rows):
+
+        cols = st.columns(5)
+
+        for col, (
+            label,
+            action,
+        ) in zip(cols, row):
+
+            with col:
+
+                if st.button(
+                    label,
+                    key=f"button_{row_index}_{label}",
+                    use_container_width=True,
+                ):
+
+                    if action == "clear":
+                        clear_all()
+
+                    elif action == "clear_entry":
+                        clear_entry()
+
+                    elif action == "back":
+                        backspace()
+
+                    elif action == "sign":
+                        toggle_sign()
+
+                    elif action == "equals":
+                        calculate()
+
+                    elif action == "mplus":
+                        memory_add()
+
+                    elif action == "mminus":
+                        memory_subtract()
+
+                    elif action == "mc":
+                        memory_clear()
+
+                    elif action == "mr":
+                        memory_recall()
+
+                    elif action == "copy":
+                        copy_result()
+
+                    elif action == "history":
+                        st.session_state.status = (
+                            "Verlauf rechts geöffnet"
+                        )
+
+                    else:
+                        add_text(action)
+
+                    st.rerun()
+
+    st.markdown(
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+# ============================================================
+# HISTORY
+# ============================================================
+
+with right:
+
+    st.markdown(
+        '<div class="nova-card">'
+        '<div class="section-title">'
+        'VERLAUF'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    search = st.text_input(
+        "🔎",
+        placeholder="Verlauf durchsuchen...",
+        label_visibility="collapsed",
+    )
+
+    filtered_history = [
+        item
+        for item in st.session_state.history
+        if (
+            not search
+            or search.lower()
+            in item["expression"].lower()
+            or search.lower()
+            in item["result"].lower()
+        )
+    ]
+
+    if st.button(
+        "🗑 Verlauf löschen",
+        use_container_width=True,
+    ):
+        clear_history()
+        st.rerun()
+
+    st.markdown(
+        f"**{len(st.session_state.history)} "
+        f"Berechnungen**"
+    )
+
+    if not filtered_history:
+
+        st.caption(
+            "Noch keine Berechnungen."
+        )
+
+    else:
+
+        for index, item in enumerate(
+            filtered_history
+        ):
+
+            st.markdown(
+                f"""
+                <div class="history-card">
+
+                    <div class="history-expression">
+                        {item["expression"]}
+                    </div>
+
+                    <div class="history-result">
+                        = {item["result"]}
+                    </div>
+
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            if st.button(
+                "↩ Laden",
+                key=f"load_{index}",
+                use_container_width=True,
+            ):
+
+                st.session_state.expression = (
+                    item["expression"]
+                )
+
+                st.session_state.result = ""
+
+                st.rerun()
+
+    st.markdown(
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+# ============================================================
+# STATUS BAR
+# ============================================================
+
+st.markdown(
+    f"""
+    <div class="statusbar">
+
+        <span class="ready">
+            ● READY
+        </span>
+
+        <span>
+            {st.session_state.status}
+        </span>
+
+        <span>
+            NOVA CALC v2.0
+        </span>
+
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
