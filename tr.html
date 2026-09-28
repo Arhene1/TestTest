@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grafischer Taschenrechner</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #141e30, #243b55);
+      font-family: Arial, sans-serif;
+    }
+
+    .calculator {
+      width: 350px;
+      padding: 20px;
+      border-radius: 25px;
+      background: #181818;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+
+    .display {
+      width: 100%;
+      height: 100px;
+      margin-bottom: 20px;
+      padding: 15px;
+      border-radius: 15px;
+      background: #292929;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-end;
+      overflow: hidden;
+    }
+
+    #calculation {
+      color: #aaa;
+      font-size: 18px;
+      min-height: 25px;
+    }
+
+    #result {
+      font-size: 38px;
+      font-weight: bold;
+      word-break: break-all;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    button {
+      height: 65px;
+      border: none;
+      border-radius: 16px;
+      font-size: 22px;
+      font-weight: bold;
+      cursor: pointer;
+      background: #333;
+      color: white;
+      transition: 0.15s;
+    }
+
+    button:hover {
+      background: #444;
+      transform: translateY(-2px);
+    }
+
+    button:active {
+      transform: scale(0.94);
+    }
+
+    .operator {
+      background: #ff9500;
+    }
+
+    .operator:hover {
+      background: #ffad32;
+    }
+
+    .function {
+      background: #666;
+    }
+
+    .equals {
+      background: #2196f3;
+      grid-row: span 2;
+      height: 142px;
+    }
+
+    .zero {
+      grid-column: span 2;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="calculator">
+
+    <div class="display">
+      <div id="calculation"></div>
+      <div id="result">0</div>
+    </div>
+
+    <div class="buttons">
+
+      <button class="function" onclick="clearCalculator()">AC</button>
+      <button class="function" onclick="deleteLast()">DEL</button>
+      <button class="function" onclick="percent()">%</button>
+      <button class="operator" onclick="addOperator('/')">÷</button>
+
+      <button onclick="addNumber('7')">7</button>
+      <button onclick="addNumber('8')">8</button>
+      <button onclick="addNumber('9')">9</button>
+      <button class="operator" onclick="addOperator('*')">×</button>
+
+      <button onclick="addNumber('4')">4</button>
+      <button onclick="addNumber('5')">5</button>
+      <button onclick="addNumber('6')">6</button>
+      <button class="operator" onclick="addOperator('-')">−</button>
+
+      <button onclick="addNumber('1')">1</button>
+      <button onclick="addNumber('2')">2</button>
+      <button onclick="addNumber('3')">3</button>
+      <button class="operator" onclick="addOperator('+')">+</button>
+
+      <button class="zero" onclick="addNumber('0')">0</button>
+      <button onclick="addNumber('.')">.</button>
+      <button class="equals" onclick="calculate()">=</button>
+
+    </div>
+  </div>
+
+  <script>
+    let current = "";
+    let calculation = "";
+
+    const resultDisplay = document.getElementById("result");
+    const calculationDisplay = document.getElementById("calculation");
+
+    function updateDisplay() {
+      resultDisplay.textContent = current || "0";
+      calculationDisplay.textContent = calculation;
+    }
+
+    function addNumber(number) {
+      if (number === ".") {
+        const parts = current.split(/[+\-*/]/);
+        const lastNumber = parts[parts.length - 1];
+
+        if (lastNumber.includes(".")) {
+          return;
+        }
+
+        if (lastNumber === "") {
+          current += "0";
+        }
+      }
+
+      current += number;
+      updateDisplay();
+    }
+
+    function addOperator(operator) {
+      if (current === "") return;
+
+      const lastCharacter = current.slice(-1);
+
+      if ("+-*/".includes(lastCharacter)) {
+        current = current.slice(0, -1);
+      }
+
+      current += operator;
+      updateDisplay();
+    }
+
+    function clearCalculator() {
+      current = "";
+      calculation = "";
+      updateDisplay();
+    }
+
+    function deleteLast() {
+      current = current.slice(0, -1);
+      updateDisplay();
+    }
+
+    function percent() {
+      if (current === "") return;
+
+      try {
+        const value = eval(current);
+        current = String(value / 100);
+        updateDisplay();
+      } catch {
+        resultDisplay.textContent = "Fehler";
+      }
+    }
+
+    function calculate() {
+      if (current === "") return;
+
+      try {
+        const expression = current;
+
+        // Nur mathematische Zeichen erlauben
+        if (!/^[0-9+\-*/.() ]+$/.test(expression)) {
+          throw new Error();
+        }
+
+        const result = Function(
+          '"use strict"; return (' + expression + ')'
+        )();
+
+        if (!Number.isFinite(result)) {
+          throw new Error();
+        }
+
+        calculation = expression + " =";
+        current = String(result);
+
+        updateDisplay();
+
+      } catch {
+        resultDisplay.textContent = "Fehler";
+        current = "";
+      }
+    }
+
+    // Tastatursteuerung
+    document.addEventListener("keydown", function(event) {
+
+      if (/^[0-9.]$/.test(event.key)) {
+        addNumber(event.key);
+      }
+
+      else if ("+-*/".includes(event.key)) {
+        addOperator(event.key);
+      }
+
+      else if (event.key === "Enter" || event.key === "=") {
+        calculate();
+      }
+
+      else if (event.key === "Backspace") {
+        deleteLast();
+      }
+
+      else if (event.key === "Escape") {
+        clearCalculator();
+      }
+
+      else if (event.key === "%") {
+        percent();
+      }
+    });
+
+    updateDisplay();
+  </script>
+
+</body>
+</html>
